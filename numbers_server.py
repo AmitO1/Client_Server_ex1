@@ -21,15 +21,30 @@ def parse_data(data):
         if len(splited_data) != 4:
             return "unknown command"
         if splited_data[2] == "+":
-            return str(int(splited_data[1]) + int(splited_data[3]))
+            number = int(splited_data[1]) + int(splited_data[3])
+            if is_outside_int32_range(number):
+                return "error: result is too big"
+            return str(number)
         elif splited_data[2] == "-":
-            return str(int(splited_data[1]) - int(splited_data[3]))
+            number = int(splited_data[1]) - int(splited_data[3])
+            if is_outside_int32_range(number):
+                return "error: result is too big"
+            return str(number)
         elif splited_data[2] == "*":
-            return str(int(splited_data[1]) * int(splited_data[3]))
+            number = int(splited_data[1]) * int(splited_data[3])
+            if is_outside_int32_range(number):
+                return "error: result is too big"
+            return str(number)
         elif splited_data[2] == "/":
-            return str(int(splited_data[1]) / int(splited_data[3]))
+            number = round(int(splited_data[1]) / int(splited_data[3]),2)
+            if is_outside_int32_range(number):
+                return "error: result is too big"
+            return str(number)
         elif splited_data[2] == "^":
-            return str(int(splited_data[1]) ** (int(splited_data[3])))
+            number = int(splited_data[1]) ** (int(splited_data[3]))
+            if is_outside_int32_range(number):
+                return "error: result is too big"
+            return str(number)
         else:
             return "unknown command"
         
@@ -120,7 +135,6 @@ connected_socket_list = []
 
 while True:
     readable, writeable, _ = select.select(socket_list, [], [])
-    
     for sock in readable:
         if sock == serverSock:
             connectionSock, addr = serverSock.accept()
@@ -132,32 +146,33 @@ while True:
         else:
             if sock not in connected_socket_list:
                 data = receive_message(sock)
-                if data == "quit":
-                    break # handle discconection
-                parts = data.split(", ")
-                if len(parts) != 2:
-                    break #need to handle incorrect input for user password
-                if "User: " not in parts[0]:
-                    break # handle incorrect input and discnnect
-                if "Password: " not in parts[1]:
-                    break #handle inccorect input and discconect
-                result = [parts[0].split(": ")[1], parts[1].split(": ")[1]]
-                if check_user(result[0], result[1]):
-                    meesage = "Hi "+result[0]+", good to see you.\n"
-                    connected_socket_list.append(sock)
-                    sendall(sock, meesage.encode())
+                if data == "quit": # in case quitting before plugin username and password
+                    socket_list.remove(sock)
+                    sock.close()
+                    break # socket still not in connected socket list so can just break
                 else:
-                    sendall(sock,b'Failed to login.\n')
+                    parts = data.split(", ")
+                    if len(parts) != 2:
+                        sendall(sock,b'Failed to login.\n')
+                    if "User: " not in parts[0] or "Password: " not in parts[1]:
+                        sendall(sock,b'Failed to login.\n')
+                    else: 
+                        result = [parts[0].split(": ")[1], parts[1].split(": ")[1]]
+                        if check_user(result[0], result[1]):
+                            meesage = "Hi "+result[0]+", good to see you.\n"
+                            connected_socket_list.append(sock)
+                            sendall(sock, meesage.encode())
+                        else:
+                            sendall(sock,b'Failed to login.\n')
             else:
                 data_after = receive_message(sock)
                 if data_after != "":
-                    #handle bigger then int32
-                    #in case of divide return only 2 number after point
                     if data_after == "quit":
                         sendall(sock, b'Closing connection...')
                         connected_socket_list.remove(sock)
                         socket_list.remove(sock)
                         sock.close()
+                        break
                     result = parse_data(data_after)
                     if result == "unknown command":
                         sendall(sock, b'Unkown command, Closing connection')

@@ -43,15 +43,18 @@ while clientSock.fileno() != -1:
     if loogged_in == False:
         username = input()
         if username == "quit":
-            pass #handle close socket
+            sendall(clientSock, b'quit')
+            clientSock.close()
+            break
         else:
             password = input()
         if password == "quit":
-            pass #handle close socket
-        user_pass = username+", "+password+"\n"
-        if "User: " not in username:
+            sendall(clientSock, b'quit')
+            clientSock.close()
             break
-        username = username.split(": ")[1]
+        user_pass = username+", "+password+"\n"
+        if "User: " in username:
+            username = username.split(": ")[1] #will be handeled on server side more here only for login message constraction
         sendall(clientSock, user_pass.encode())
         data = receive_message(clientSock)
     else:
@@ -63,6 +66,8 @@ while clientSock.fileno() != -1:
         if data == "Closing connection...":
             print(data)
             clientSock.close()
+        elif data == "error: result is too big":
+            print(data)
         elif data != "Unkown command, Closing connection":
             if command[0] == "calculate:":
                 print(f"Response: {data}.")
