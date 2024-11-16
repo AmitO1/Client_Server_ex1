@@ -1,0 +1,79 @@
+import socket
+
+HOST = ""
+PORT = 1337
+loogged_in = False
+username = ""
+
+def sendall(sock, data):
+    """Send all data over a socket connection."""
+    total_sent = 0
+    while total_sent < len(data):
+        sent = sock.send(data[total_sent:])
+        if sent == 0:
+            raise RuntimeError("Socket connection broken")
+        total_sent += sent
+    
+def receive_message(sock):
+    message = b''
+    while True:
+        chunk = sock.recv(1024)
+        if not chunk:
+            break
+        message += chunk
+        if b'\n' in chunk:
+            break
+    return message.decode('utf-8').strip()
+        
+
+clientSock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+clientSock.connect((HOST,PORT))
+data = receive_message(clientSock)
+while clientSock.fileno() != -1:
+    if data == "Hi "+username+", good to see you.":
+        loogged_in = True
+        print(data)
+        
+    if data == "Failed to login.":
+        print(data)
+        
+    if data == "Welcome! Please log in.":
+        print(data)
+        
+    if loogged_in == False:
+        username = input()
+        if username == "quit":
+            pass #handle close socket
+        else:
+            password = input()
+        if password == "quit":
+            pass #handle close socket
+        user_pass = username+", "+password+"\n"
+        if "User: " not in username:
+            break
+        username = username.split(": ")[1]
+        sendall(clientSock, user_pass.encode())
+        data = receive_message(clientSock)
+    else:
+        message = input()
+        message = message + "\n"
+        command = message.split(" ")
+        sendall(clientSock,message.encode())
+        data = receive_message(clientSock)
+        if data == "Closing connection...":
+            print(data)
+            clientSock.close()
+        elif data != "Unkown command, Closing connection":
+            if command[0] == "calculate:":
+                print(f"Response: {data}.")
+            if command[0] == "max:":
+                print(f"the maximum is {data}")
+            if command[0] == "factors:":
+                print(f"the prime factors of {command[1]} are: {data}")
+        else:
+            print(data)
+            clientSock.close()
+        
+    
+
+
