@@ -1,9 +1,5 @@
 import socket
-
-HOST = ""
-PORT = 1337
-loogged_in = False
-username = ""
+import sys
 
 def sendall(sock, data):
     """Send all data over a socket connection."""
@@ -25,6 +21,21 @@ def receive_message(sock):
             break
     return message.decode('utf-8').strip()
         
+HOST = "localhost"
+PORT = 1337
+loogged_in = False
+username = ""
+
+if len(sys.argv) == 3:
+    HOST = sys.argv[1]
+    PORT = int(sys.argv[2])
+if len(sys.argv) == 2:
+    port_check = int(sys.argv[1])
+    if 0 <= port_check <= 65535:
+        print("Cannot enter only port number without hostname!")
+        sys.exit(1)
+    else:
+        HOST = sys.argv[1]
 
 clientSock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 clientSock.connect((HOST,PORT))

@@ -111,7 +111,17 @@ def receive_message(sock):
             break
     return message.decode('utf-8').strip()
 
-file = open("/Users/amitomer/Desktop/לימודים/networks/ex1/users_file.txt","r")
+if len(sys.argv) == 3:
+    file_loc = sys.argv[1]
+    PORT = int(sys.argv[2])
+elif len(sys.argv) == 2:
+    file_loc = sys.argv[1]
+    PORT = 1337
+else:
+    print("Missing arguments exiting")
+    sys.exit(1)
+    
+file = open(file_loc,"r")
 
 user_pass = {}
 for line  in file:
@@ -122,7 +132,7 @@ for line  in file:
 
 file.close()
 HOST = ""
-PORT = 1337
+
 
 
 serverSock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
