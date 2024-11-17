@@ -132,9 +132,10 @@ serverSock.setblocking(0)
 
 socket_list = [serverSock]
 connected_socket_list = []
+responses = {}
 
 while True:
-    readable, writeable, _ = select.select(socket_list, [], [])
+    readable, writeable, _ = select.select(socket_list, socket_list, [])
     for sock in readable:
         if sock == serverSock:
             connectionSock, addr = serverSock.accept()
@@ -142,43 +143,59 @@ while True:
             connectionSock.setblocking(0)
             if connectionSock not in socket_list:
                 socket_list.append(connectionSock)
-                sendall(connectionSock,b'Welcome! Please log in.\n')
+                response = "Welcome! Please log in.\n"
+                responses[connectionSock] = []
+                responses[connectionSock].append(response.encode())
         else:
             if sock not in connected_socket_list:
                 data = receive_message(sock)
                 if data == "quit": # in case quitting before plugin username and password
                     socket_list.remove(sock)
+                    del responses[sock]
                     sock.close()
                     break # socket still not in connected socket list so can just break
                 else:
                     parts = data.split(", ")
                     if len(parts) != 2:
-                        sendall(sock,b'Failed to login.\n')
+                        response = "Failed to login.\n"
+                        responses[sock].append(response.encode())
                     if "User: " not in parts[0] or "Password: " not in parts[1]:
-                        sendall(sock,b'Failed to login.\n')
+                        response = "Failed to login.\n"
+                        responses[sock].append(response.encode())
                     else: 
                         result = [parts[0].split(": ")[1], parts[1].split(": ")[1]]
                         if check_user(result[0], result[1]):
                             meesage = "Hi "+result[0]+", good to see you.\n"
                             connected_socket_list.append(sock)
-                            sendall(sock, meesage.encode())
+                            responses[sock].append(meesage.encode())
                         else:
-                            sendall(sock,b'Failed to login.\n')
-            else:
+                            response = "Failed to login.\n"
+                            responses[sock].append(response.encode())
+            else: 
                 data_after = receive_message(sock)
                 if data_after != "":
                     if data_after == "quit":
-                        sendall(sock, b'Closing connection...')
-                        connected_socket_list.remove(sock)
-                        socket_list.remove(sock)
-                        sock.close()
+                        response = "Closing connection...\n"
+                        responses[sock].append(response.encode())
                         break
                     result = parse_data(data_after)
                     if result == "unknown command":
-                        sendall(sock, b'Unkown command, Closing connection')
-                        connected_socket_list.remove(sock)
-                        socket_list.remove(sock)
-                        sock.close()
+                        response = "Unkown command, Closing connection\n"
+                        responses[sock].append(response.encode())
                     else:
                         result = result + "\n"
-                        sendall(sock,result.encode())
+                        responses[sock].append(result.encode())
+    for sock in writeable:
+        if sock in responses and responses[sock]:
+            response = responses[sock][0]
+            sendall(sock,response)
+            if response.decode() == "Unkown command, Closing connection\n" or response.decode() == "Closing connection...\n":
+                # handle disconnection due to unkown command / quit command
+                connected_socket_list.remove(sock)
+                socket_list.remove(sock)
+                del responses[sock]
+                sock.close()
+            else:
+                responses[sock].pop(0)
+            
+            
