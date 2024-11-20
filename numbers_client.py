@@ -85,7 +85,7 @@ while clientSock.fileno() != -1:
             if command[0] == "max:":
                 print(f"the maximum is {data}")
             if command[0] == "factors:":
-                print(f"the prime factors of {command[1]} are: {data}")
+                print(f"the prime factors of {command[1][:-1]} are: {data}")
         else:
             print(data)
             clientSock.close()
